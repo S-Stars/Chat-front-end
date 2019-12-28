@@ -1,48 +1,63 @@
-import React, {useEffect, useState} from 'react';
-import {Redirect} from 'react-router-dom';
+import React, { useEffect, useState, useContext } from 'react';
+import { Redirect } from 'react-router-dom';
 
 import socketIOClient from 'socket.io-client';
+import { UsernameContext } from './UserProvider';
 
-const socket = socketIOClient('http://localhost:5000')
+export const socket = socketIOClient('http://localhost:5000');
+
+//this is the file that handles the login state
 
 export const Login = () => {
-    const [loggedIn, setLogIn] = useState(false)
-    const [username, changeUsername] = useState('')
-    const [message, setMessage] = useState('')
-    useEffect(()=> {
-        socket.on('userStatus',(data)=> {
-            setLogIn(data);
-            if(!data){
-                setMessage('user name has been taken')
-            }
-        })
-        return () => {
-            socket.off('userID')
-        }
-    })
+  // these are the local states that checks if the user has logged in or not
 
-    const onSubmit = (event) => {
-        event.preventDefault();
-        if(username === '') {return setMessage('user name is empty please fill in an user name')}
-        socket.emit('join',username)
+  const [username, changeUsername] = useState('');
+  const [message, setMessage] = useState('');
+  const { globalUserName, setGlobalUser } = useContext(UsernameContext);
+
+  // this add the socket event listener across the app and see if the user has successfully logged in
+  useEffect(() => {
+    socket.on('userStatus', data => {
+      if (!data) {
+        return setMessage('user name has been taken');
+      }
+      setGlobalUser(username);
+    });
+    return () => {
+      socket.off('userStatus');
+    };
+  });
+
+  // this handles the submit event on the form
+  const onSubmit = event => {
+    event.preventDefault();
+    if (username === '') {
+      return setMessage('user name is empty please fill in an user name');
     }
+    socket.emit('join', username);
+  };
 
-    const inputOnChange = (event) => {
-        event.preventDefault();
-        const inputName = event.target.value;
-        changeUsername(inputName)
-    }
+  // this handles the change of the login field
+  const inputOnChange = event => {
+    event.preventDefault();
+    const inputName = event.target.value;
+    changeUsername(inputName);
+  };
 
-    return(
-        <>
-        {loggedIn? <Redirect to='/chat'></Redirect>:
+  // render logic, if successful we go to the chat side
+  return (
+    <>
+      {globalUserName.length !== 0 ? (
+        <Redirect to="/chat" />
+      ) : (
         <div>
-        <h1>My Chat App</h1>
-            <label>Enter an username</label>
-            <input type='text' name='username' onChange={inputOnChange}/>
-            <button onClick={onSubmit}>Submit Username</button>
-            <p>{message}</p>
-        </div>}
-        </>
-    )
-}
+          <h1>My Chat App</h1>
+          <label>Enter an username</label>
+          <input type="text" name="username" onChange={inputOnChange} />
+          <button onClick={onSubmit}>Submit Username</button>
+          <p>{message}</p>
+        </div>
+      )}
+    </>
+  );
+};
